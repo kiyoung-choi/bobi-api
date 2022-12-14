@@ -1,0 +1,19 @@
+{
+    "watch": [
+        "src",
+        ".env"
+    ],
+    "ext": "ts",
+    "ignore": [
+        "src/**/*.spec.ts"
+    ],
+    "exec": [
+        "ts-node",
+        "-T",
+        "-r",
+        "dotenv/config",
+        "-P",
+        "./src/tsconfig.json",
+        "./src/app.ts"
+    ]
+}
