@@ -13,7 +13,7 @@
         "-r",
         "dotenv/config",
         "-P",
-        "./src/tsconfig.json",
-        "./src/app.ts"
+        "./tsconfig.json",
+        "./src/index.ts"
     ]
 }
