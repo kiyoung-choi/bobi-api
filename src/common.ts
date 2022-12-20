@@ -11,8 +11,6 @@ export interface IProduct {
 
 	/** 판매가 */
 	price: number;
-	/** 소비자준수가 */
-	listPrice: number;
 
 	/** 배송비 타입 */
 	shippingType: "F" | "S" | "C"; // F: 무료배송, S: 선불, C: 착불
@@ -26,7 +24,9 @@ export interface IProduct {
 	jejuShippingCharge: number;
 	/** 도서산간 추가 배송비 */
 	mountainShippingCharge: number;
-	/** 묶음배송 수량 */
+	/** 묶음배송 여부 */
+	isMaxq: "Y" | "N";
+	/** 최대구매수량 */
 	maxq: number;
 
 	/** 키워드 */
@@ -40,7 +40,7 @@ export interface IProduct {
 	/** 브랜드 */
 	brand?: string;
 	/** 제조사 */
-	production: string;
+	production?: string;
 	/** 제조국 */
 	madein: string;
 	/** 이미지모음 */
