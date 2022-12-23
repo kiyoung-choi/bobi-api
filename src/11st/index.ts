@@ -1,4 +1,5 @@
 import axios from "axios";
+import * as datefns from "date-fns";
 import { decode } from "iconv-lite";
 import { parse } from "js2xmlparser";
 import { parseString } from "xml2js";
@@ -299,8 +300,8 @@ router.post("/product/register", async (req: any, res: any) => {
 			dlvCstPayTypCd: "03", // 결제방법
 			jejuDlvCst: body.jejuShippingCharge, // 제주
 			islandDlvCst: body.mountainShippingCharge, // 도서산간
-			// addrSeqOut: body.apiOption.addrSeqOut, // 출고지 주소 코드
-			// addrSeqIn: body.apiOption.addrSeqIn, // 반품/교환지 주소 코드
+			addrSeqOut: body.apiOption.addrSeqOut, // 출고지 주소 코드
+			addrSeqIn: body.apiOption.addrSeqIn, // 반품/교환지 주소 코드
 			rtngdDlvCst: body.returnShippingCharge, // 반품배송비
 			exchDlvCst: body.changeShippingCharge, // 교환배송비(왕복)
 			asDetail: "상세페이지 참조", // A/S 안내
@@ -333,6 +334,10 @@ router.post("/product/register", async (req: any, res: any) => {
 			},
 			company: body.production || "", // 제조사
 			modelNm: body.model || "", // 모델명
+			selPrdClfCd: "0:100", // 판매기간코드/예약기간코드
+			aplBgnDy: datefns.format(new Date(), "yyyy/MM/dd"), // 판매 시작일/예약 시작일
+			aplEndDy: "2999/12/31", // 판매 종료일/예약 종료일
+			prdSelQty: body.quantity, // 재고수량
 		};
 
 		if (body.certifications) {
@@ -356,6 +361,11 @@ router.post("/product/register", async (req: any, res: any) => {
 		}
 
 		if (body.options) {
+			params.optSelectYn = "Y"; // 선택형 옵션 여부
+			params.txtColCnt = "1"; // 고정값
+			params.colTitle = "상품선택"; // 옵션명
+			params.prdExposeClfCd = "01"; // 상품상세 옵션값 노출 방식 선택
+
 			params.ProductOption = body.options.map((o, idx) => {
 				const colValue0 = o.attributes.length === 1 ? o.attributes[0].value : `${o.attributes[0].value}_${o.attributes[1].value}`;
 				return {
@@ -363,23 +373,145 @@ router.post("/product/register", async (req: any, res: any) => {
 					colOptPrice: o.price, // 옵션가
 					colValue0, // 옵션값
 					colCount: o.quantity, // 옵션재고수량
-					colSellerStockCd: idx, // 셀러재고번호
 				};
 			});
 		}
 
-		return res.status(200).json(params);
+		const data = parse("Product", params);
+		const response = await request(data, body.apiOption, "/prodservices/product", "POST");
 
-		// const data = parse("Product", params);
-		// const response = await request(data, body.apiOption, "/prodservices/product", "POST");
-
-		// return res.status(200).json(response);
+		return res.status(200).json(response);
 	} catch (err) {
 		return res.status(400).send({ status: 400, message: err.message });
 	}
 });
 
 /** 상품 수정 */
+router.post("/product/update", async (req: any, res: any) => {
+	try {
+		interface Product extends IProduct {
+			apiOption: {
+				key: string;
+				addrSeqOut: string;
+				addrSeqIn: string;
+			}
+			prdNo: string;
+		}
+		const body: Product = req.body;
+
+		const tax = body.tax === "tax" ? "01" : (body.tax === "free" ? "02" : "03");
+
+		const params: any = {
+			selMthdCd: "01", // 판매방식
+			dispCtgrNo: body.category, // 카테고리번호
+			prdTypCd: "01", // 서비스 상품 코드
+			prdNm: body.name, // 상품명
+			brand: body.brand || "&#39;알수없음&#39;", // 브랜드
+			rmaterialTypCd: "05", // 원재료 유형 코드 05: 상품별 원산지는 상세설명 참조
+			orgnTypCd: "03", // 원산지 코드
+			orgnNmVal: body.madein, // 원산지명
+			suplDtyfrPrdClfCd: tax, // 부가세/면세상품코드
+			forAbrdBuyClf: body.isOversea === "Y" ? "02" : "01", // 해외구매대행상품 여부
+			prdStatCd: "01", // 상품상태
+			minorSelCnYn: body.blockMinor, // 미성년자 구매가능
+			prdImage01: body.imageUrls[0], // 대표 이미지 URL
+			htmlDetail: body.content, // 상세설명
+			selPrc: body.price, // 판매가
+			gblDlvYn: "", // 전세계배송 이용여부
+			dlvCnAreaCd: "01", // 배송가능지역 코드
+			dlvWyCd: "01", // 배송방법
+			dlvCstInstBasiCd: body.shippingType === "S" ? "02" : "01", // 배송비 종류
+			dlvCst1: body.shippingType === "S" ? body.shippingCharge : "", // 배송비
+			bndlDlvCnYn: body.isMaxq, // 묶음배송 여부
+			selLimitQty: body.maxq, // 최대구매수량 개수
+			dlvCstPayTypCd: "03", // 결제방법
+			jejuDlvCst: body.jejuShippingCharge, // 제주
+			islandDlvCst: body.mountainShippingCharge, // 도서산간
+			addrSeqOut: body.apiOption.addrSeqOut, // 출고지 주소 코드
+			addrSeqIn: body.apiOption.addrSeqIn, // 반품/교환지 주소 코드
+			rtngdDlvCst: body.returnShippingCharge, // 반품배송비
+			exchDlvCst: body.changeShippingCharge, // 교환배송비(왕복)
+			asDetail: "상세페이지 참조", // A/S 안내
+			rtngExchDetail: "상세페이지 참조", // 반품/교환 안내
+			dlvClf: "02", // 배송 주체
+			ProductNotification: {
+				type: "891045", // 유형코드
+				item: [
+					{
+						code: "23759100", // 항목코드
+						name: "상세페이지 참조", // 항목값
+					},
+					{
+						code: "23756033", // 항목코드
+						name: "상세페이지 참조", // 항목값
+					},
+					{
+						code: "11905", // 항목코드
+						name: "상세페이지 참조", // 항목값
+					},
+					{
+						code: "23760413", // 항목코드
+						name: "상세페이지 참조", // 항목값
+					},
+					{
+						code: "11800", // 항목코드
+						name: "상세페이지 참조", // 항목값
+					},
+				],
+			},
+			company: body.production || "", // 제조사
+			modelNm: body.model || "", // 모델명
+			selPrdClfCd: "0:100", // 판매기간코드/예약기간코드
+			aplBgnDy: datefns.format(new Date(), "yyyy/MM/dd"), // 판매 시작일/예약 시작일
+			aplEndDy: "2999/12/31", // 판매 종료일/예약 종료일
+			prdSelQty: body.quantity, // 재고수량
+		};
+
+		if (body.certifications) {
+			params.ProductCertGroup = {
+				crtfGrpTypCd: body.certifications.type, // 인증정보그룹번호
+				crtfGrpObjClfCd: body.certifications.isKcCerti, // KC인증대상여부
+				crtfGrpExptTypCd: body.certifications.isCertiExpt, // KC면제유형
+				ProductCert: {
+					certTypeCd: body.certifications.certiInfo, // 인증유형
+					certKey: body.certifications.key, // 인증번호
+				},
+			};
+		}
+
+		if (body.medicals) {
+			params.ProductMedical = {
+				MedicalKey: body.medicals.key, // 의료기기 품목허가번호
+				MedicalRetail: body.medicals.retail, // 의료기기 판매업신고 기관 및 번호
+				MedicalAd: body.medicals.ad, // 의료기기사전광고심의번호
+			};
+		}
+
+		if (body.options) {
+			params.optSelectYn = "Y"; // 선택형 옵션 여부
+			params.txtColCnt = "1"; // 고정값
+			params.colTitle = "상품선택"; // 옵션명
+			params.prdExposeClfCd = "01"; // 상품상세 옵션값 노출 방식 선택
+
+			params.ProductOption = body.options.map((o, idx) => {
+				const colValue0 = o.attributes.length === 1 ? o.attributes[0].value : `${o.attributes[0].value}_${o.attributes[1].value}`;
+				return {
+					useYn: o.status === "sale" ? "Y" : "N", // 옵션상태
+					colOptPrice: o.price, // 옵션가
+					colValue0, // 옵션값
+					colCount: o.quantity, // 옵션재고수량
+				};
+			});
+		}
+
+		const data = parse("Product", params);
+		const response = await request(data, body.apiOption, `/prodservices/product/${body.prdNo}`, "PUT");
+
+		return res.status(200).json(response);
+	} catch (err) {
+		return res.status(400).send({ status: 400, message: err.message });
+	}
+});
 
 /** 판매 중지 */
 router.post("/product/soldout", async (req: any, res: any) => {
